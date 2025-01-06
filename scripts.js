@@ -5,6 +5,13 @@ throttleInputButtons.forEach((button) => {
         console.log("ThrottleInput value: " + newNumberValue);
     });
 });
+const volumeInputButtons = document.getElementById("volumeInput").querySelectorAll("button");
+volumeInputButtons.forEach((button) => {
+    button.addEventListener("click", (event) => {
+        var newNumberValue = getPlusMinusInputValue(event);
+        console.log("VolumeInput value: " + newNumberValue);
+    });
+});
 
 function getPlusMinusInputValue(event) {
     const pressedButton = event.currentTarget;
