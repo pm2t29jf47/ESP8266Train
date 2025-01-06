@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<style>
+    .container{width:540px;max-width:100%;margin:0 auto;padding:0 2rem;border:1px solid #d0d8dd;background-color:white;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.05);box-sizing:border-box;font-weight:normal;font-family:sans-serif}.input-row{display:flex;padding:2rem 0;border-bottom:1px solid #d0d8dd}.input-row:last-child{border-bottom:0}.title{margin-right:2rem}.label{margin-bottom:.25rem;font-weight:bold}.input{display:flex;align-items:center;margin-left:auto}button{display:flex;justify-content:center;align-items:center;width:3rem;height:3rem;border:1px solid #0064fe;border-radius:1000px;background-color:white}button:hover{background-color:#b8dcff;cursor:pointer}button:focus{outline:none;box-shadow:0 0 0 .25rem #b8dcff}button[disabled]{opacity:.5;pointer-events:none}button:active{background-color:#7ab8ff}.number{font-size:1.25rem;min-width:3rem;text-align:center}.icon{user-select:none}.dim{color:#8d9ca7}
+</style>
+
+<body>
+    <div class="container">
+        <div class="input-row">
+            <div class="title">
+                <h2 class="label">Газ</h2>
+            </div>
+            <div class="input">
+                <button class="minus" disabled>
+                    <svg width="16" height="2" viewBox="0 0 16 2" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line y1="1" x2="16" y2="1" stroke="#0064FE" stroke-width="2" class="icon" />
+                    </svg>
+                </button>
+                <div class="number dim" style="width: 80px">
+                    <div class="numberValue" style="display: inline; padding-left: 10px">0</div>
+                    <div class="percentSign" style="display: inline-block; padding-right: 10px">%</div>
+                </div>
+                <button class="plus">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        class="icon">
+                        <line x1="8" y1="4.37114e-08" x2="8" y2="16" stroke="#0064FE" stroke-width="2" />
+                        <line y1="8" x2="16" y2="8" stroke="#0064FE" stroke-width="2" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const buttons=document.querySelectorAll("button");buttons.forEach((e=>{e.addEventListener("click",(e=>{const t=e.currentTarget,s=t.parentNode,r=s.querySelector(".number"),l=s.querySelector(".numberValue"),n=parseFloat(l.textContent),o=s.querySelector(".plus"),u=s.querySelector(".minus"),a=t.classList.contains("plus")?n+20:n-20;l.textContent=a,0===a?(u.disabled=!0,r.classList.add("dim"),t.blur()):a>0&&a<100?(u.disabled=!1,o.disabled=!1,r.classList.remove("dim")):100===a&&(o.disabled=!0,t.blur())}))}));
+    </script>
+</body>
+
+</html>
