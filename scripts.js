@@ -1,29 +1,36 @@
- const buttons = document.querySelectorAll("button");
-        buttons.forEach((button) => {
-            button.addEventListener("click", (event) => {
-                const element = event.currentTarget;
-                const parent = element.parentNode;
-                const numberContainer = parent.querySelector(".number");
-                const numberValueContainer = parent.querySelector(".numberValue");
-                const number = parseFloat(numberValueContainer.textContent);
-                const increment = parent.querySelector(".plus");
-                const decrement = parent.querySelector(".minus");
-                const newNumber = element.classList.contains("plus") ?
-                    number + 20 :
-                    number - 20;
-                numberValueContainer.textContent = newNumber;
-                console.log(newNumber);
-                if (newNumber === 0) {
-                    decrement.disabled = true;
-                    numberContainer.classList.add("dim");
-                    element.blur();
-                } else if (newNumber > 0 && newNumber < 100) {
-                    decrement.disabled = false;
-                    increment.disabled = false;
-                    numberContainer.classList.remove("dim");
-                } else if (newNumber === 100) {
-                    increment.disabled = true;
-                    element.blur();
-                }
-            });
-        });
+const throttleInputButtons = document.getElementById("throttleInput").querySelectorAll("button");
+throttleInputButtons.forEach((button) => {
+    button.addEventListener("click", (event) => {
+        var newNumberValue = getPlusMinusInputValue(event);
+        console.log("ThrottleInput value: " + newNumberValue);
+    });
+});
+
+function getPlusMinusInputValue(event) {
+    const pressedButton = event.currentTarget;
+    const minusButton = pressedButton.parentNode.querySelector(".minus");
+    const plusButton = pressedButton.parentNode.querySelector(".plus");
+    const numberContainer = pressedButton.parentNode.querySelector(".number");
+    const numberValueContainer = pressedButton.parentNode.querySelector(".numberValue");
+
+    const numberValue = parseFloat(numberValueContainer.textContent);
+    const newNumberValue = pressedButton.classList.contains("plus") ?
+        numberValue + 20 :
+        numberValue - 20;
+    numberValueContainer.textContent = newNumberValue;
+
+    if (newNumberValue === 0) {
+        minusButton.disabled = true;
+        numberContainer.classList.add("dim");
+        pressedButton.blur();
+    } else if (newNumberValue > 0 && newNumberValue < 100) {
+        minusButton.disabled = false;
+        plusButton.disabled = false;
+        numberContainer.classList.remove("dim");
+    } else if (newNumberValue === 100) {
+        plusButton.disabled = true;
+        pressedButton.blur();
+    }
+
+    return newNumberValue;
+}

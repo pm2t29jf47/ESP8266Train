@@ -69,8 +69,16 @@ button:active {
 
 .number {
     font-size: 1.25rem;
-    min-width: 3rem;
+    min-width: 5rem;
     text-align: center;
+}
+
+.numberValue {
+    display: inline;
+}
+
+.percentSign {
+    display: inline-block;
 }
 
 .icon {
