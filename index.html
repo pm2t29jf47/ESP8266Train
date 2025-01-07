@@ -2,7 +2,7 @@
 <html lang="ru">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset=utf-8>
     <style>
         .container {
             width: 540px;
@@ -155,7 +155,7 @@
                 getPlusMinusInputValue(
                     event,
                     async (newNumberValue) => {
-                        const url = baseThrottleUrl + '/' + newNumberValue;
+                        const url = baseThrottleUrl + '?value=' + newNumberValue;
                         const response = await fetch(url).catch((error) => {                            
                             alert("Ошибка Fetch: " + error);
                         });
@@ -166,7 +166,7 @@
                             alert("Ошибка HTTP: " + response.status);
                         }
                         console.log("ThrottleInput value: " + newNumberValue);
-                        return await response.json;
+                        return await response.text;
                     });
 
             });
@@ -178,7 +178,7 @@
                 getPlusMinusInputValue(
                     event,
                     async (newNumberValue) => {
-                        const url = baseVolumeUrl + '/' + newNumberValue;
+                        const url = baseVolumeUrl + '?value=' + newNumberValue;
                         const response = await fetch(url).catch((error) => {                            
                             alert("Ошибка Fetch: " + error);
                         });
@@ -190,7 +190,7 @@
                             alert("Ошибка HTTP: " + response.status);
                         }
                         console.log("VolumeInput value: " + newNumberValue);
-                        return await response.json;
+                        return await response.text;
                     });
 
             });
