@@ -147,18 +147,38 @@
         </div>
     </div>
     <script>
+        const baseThrottleUrl = "/changeThrottle"
+        const baseVolumeUrl = "/changeVolume"
         const throttleInputButtons = document.getElementById("throttleInput").querySelectorAll("button");
         throttleInputButtons.forEach((button) => {
-            button.addEventListener("click", (event) => {
-                var newNumberValue = getPlusMinusInputValue(event);
+            button.addEventListener("click", async (event) => {
+                const newNumberValue = getPlusMinusInputValue(event);
                 console.log("ThrottleInput value: " + newNumberValue);
+                const url = baseThrottleUrl + '/' + newNumberValue;
+                const response = await fetch(url).catch((error) => {
+                    console.log(error)
+                    alert("Ошибка Fetch: " + error);
+                });
+
+                if (!response.ok) {
+                    alert("Ошибка HTTP: " + response.status);
+                }
             });
         });
         const volumeInputButtons = document.getElementById("volumeInput").querySelectorAll("button");
         volumeInputButtons.forEach((button) => {
-            button.addEventListener("click", (event) => {
+            button.addEventListener("click", async (event) => {
                 var newNumberValue = getPlusMinusInputValue(event);
                 console.log("VolumeInput value: " + newNumberValue);
+                const url = baseVolumeUrl + '/' + newNumberValue;
+                const response = await fetch(url).catch((error) => {
+                    console.log(error)
+                    alert("Ошибка Fetch: " + error);
+                });
+
+                if (!response.ok) {
+                    alert("Ошибка HTTP: " + response.status);
+                }
             });
         });
 
