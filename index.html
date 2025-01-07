@@ -147,8 +147,8 @@
         </div>
     </div>
     <script>
-        const baseThrottleUrl = "/changeThrottle"
-        const baseVolumeUrl = "/changeVolume"
+        const baseThrottleUrl = "/changeThrottle";
+        const baseVolumeUrl = "/changeVolume";
         const throttleInputButtons = document.getElementById("throttleInput").querySelectorAll("button");
         throttleInputButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -156,8 +156,7 @@
                     event,
                     async (newNumberValue) => {
                         const url = baseThrottleUrl + '/' + newNumberValue;
-                        const response = await fetch(url).catch((error) => {
-                            console.log(error)
+                        const response = await fetch(url).catch((error) => {                            
                             alert("Ошибка Fetch: " + error);
                         });
                         if (response === undefined) {
@@ -180,8 +179,7 @@
                     event,
                     async (newNumberValue) => {
                         const url = baseVolumeUrl + '/' + newNumberValue;
-                        const response = await fetch(url).catch((error) => {
-                            console.log(error)
+                        const response = await fetch(url).catch((error) => {                            
                             alert("Ошибка Fetch: " + error);
                         });
 
@@ -214,7 +212,7 @@
             if (serverActionResult !== newNumberValue || serverActionResult === null) {
                 return;
             }
-            
+
             numberValueContainer.textContent = newNumberValue;
 
             if (newNumberValue === 0) {
