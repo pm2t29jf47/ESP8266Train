@@ -2,7 +2,7 @@
 <html lang="ru">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset=utf-8>
     <style>
         .container {
             width: 540px;
@@ -155,8 +155,8 @@
                 getPlusMinusInputValue(
                     event,
                     async (newNumberValue) => {
-                        const url = baseThrottleUrl + '/' + newNumberValue;
-                        const response = await fetch(url).catch((error) => {                            
+                        const url = baseThrottleUrl + '?value=' + newNumberValue;
+                        const response = await fetch(url).catch((error) => {
                             alert("Ошибка Fetch: " + error);
                         });
                         if (response === undefined) {
@@ -166,9 +166,9 @@
                             alert("Ошибка HTTP: " + response.status);
                         }
                         console.log("ThrottleInput value: " + newNumberValue);
-                        return await response.json;
+                        const jsonResponse = await response.json();
+                        return jsonResponse.value;
                     });
-
             });
         });
 
@@ -178,8 +178,8 @@
                 getPlusMinusInputValue(
                     event,
                     async (newNumberValue) => {
-                        const url = baseVolumeUrl + '/' + newNumberValue;
-                        const response = await fetch(url).catch((error) => {                            
+                        const url = baseVolumeUrl + '?value=' + newNumberValue;
+                        const response = await fetch(url).catch((error) => {
                             alert("Ошибка Fetch: " + error);
                         });
 
@@ -190,13 +190,13 @@
                             alert("Ошибка HTTP: " + response.status);
                         }
                         console.log("VolumeInput value: " + newNumberValue);
-                        return await response.json;
+                        const jsonResponse = await response.json();
+                        return jsonResponse.value;
                     });
-
             });
         });
 
-        function getPlusMinusInputValue(event, serverAction) {
+        async function getPlusMinusInputValue(event, serverAction) {
             const pressedButton = event.currentTarget;
             const minusButton = pressedButton.parentNode.querySelector(".minus");
             const plusButton = pressedButton.parentNode.querySelector(".plus");
@@ -205,18 +205,25 @@
 
             const numberValue = parseFloat(numberValueContainer.textContent);
             const newNumberValue = pressedButton.classList.contains("plus") ?
-                numberValue + 20 :
-                numberValue - 20;
+                numberValue + 10 :
+                numberValue - 10;
 
-            const serverActionResult = serverAction(newNumberValue);
+            minusButton.disabled = true;
+            plusButton.disabled = true;
+            numberContainer.classList.add("dim");
+            const serverActionResult = await serverAction(newNumberValue);
             if (serverActionResult !== newNumberValue || serverActionResult === null) {
                 return;
             }
+            minusButton.disabled = false;
+            plusButton.disabled = false;
+            numberContainer.classList.remove("dim");
 
-            numberValueContainer.textContent = newNumberValue;
+            numberValueContainer.textContent = serverActionResult;
 
             if (newNumberValue === 0) {
                 minusButton.disabled = true;
+                plusButton.disabled = false;
                 numberContainer.classList.add("dim");
                 pressedButton.blur();
             } else if (newNumberValue > 0 && newNumberValue < 100) {
@@ -224,6 +231,7 @@
                 plusButton.disabled = false;
                 numberContainer.classList.remove("dim");
             } else if (newNumberValue === 100) {
+                minusButton.disabled = false;
                 plusButton.disabled = true;
                 pressedButton.blur();
             }
