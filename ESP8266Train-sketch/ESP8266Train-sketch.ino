@@ -9,6 +9,9 @@
 #define PlayerRxPin 12
 #define PlayerTxPin 14
 
+unsigned long ChimneyTimer;
+unsigned int ChimneyLowHighPeriod = 2000;
+bool IsChimneyLow = true;
 SoftwareSerial PlayerSerial(PlayerRxPin, PlayerTxPin);
 ESP8266WebServer server(80);
 DFRobotDFPlayerMini player;
@@ -34,8 +37,17 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  analogWrite(ChimneyPin, 255);
-  analogWrite(ChimneyPin, 100);
+  if (millis() - ChimneyTimer >= ChimneyLowHighPeriod) {
+    ChimneyTimer = millis();
+
+    if (IsChimneyLow) {
+      analogWrite(ChimneyPin, 255);
+    } else {
+      analogWrite(ChimneyPin, 100);
+    }
+
+    IsChimneyLow = !IsChimneyLow;
+  }
 }
 
 void InitializePlayer() {
@@ -92,36 +104,47 @@ void handle_changeThrottle() {
   switch (value) {
     case 10:
       pwmValue = 100;
+      ChimneyLowHighPeriod = 1000;
       break;
     case 20:
       pwmValue = 120;
+      ChimneyLowHighPeriod = 900;
       break;
     case 30:
       pwmValue = 135;
+      ChimneyLowHighPeriod = 800;
       break;
     case 40:
       pwmValue = 155;
+      ChimneyLowHighPeriod = 700;
       break;
     case 50:
       pwmValue = 170;
+      ChimneyLowHighPeriod = 600;
       break;
     case 60:
       pwmValue = 185;
+      ChimneyLowHighPeriod = 500;
       break;
     case 70:
       pwmValue = 200;
+      ChimneyLowHighPeriod = 400;
       break;
     case 80:
       pwmValue = 215;
+      ChimneyLowHighPeriod = 300;
       break;
     case 90:
       pwmValue = 230;
+      ChimneyLowHighPeriod = 200;
       break;
     case 100:
       pwmValue = 255;
+      ChimneyLowHighPeriod = 100;
       break;
     default:
       pwmValue = 0;
+      ChimneyLowHighPeriod = 2000;
       break;
   }
 
