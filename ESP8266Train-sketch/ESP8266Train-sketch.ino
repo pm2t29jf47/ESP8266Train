@@ -10,18 +10,23 @@
 #define PlayerTxPin 14
 
 unsigned long ChimneyTimer;
+unsigned long PlayerTimer;
+unsigned int PlayerCommandDelay = 1000;
 unsigned int ChimneyLowHighPeriod = 2000;
 bool IsChimneyLow = true;
+bool CurrentIsPlaying = false;
+bool NewIsPlaying = false;
+bool CurrentIsPaused = false;
+bool NewIsPaused = false;
+bool CurrentIsStopped = false;
+bool NewIsStopped = false;
+unsigned int CurrentVolume = 1;
+unsigned int NewVolume = 0;
+unsigned int CurrentTrack = 0;
+unsigned int NewTrack = 3;
 SoftwareSerial PlayerSerial(PlayerRxPin, PlayerTxPin);
 ESP8266WebServer server(80);
 DFRobotDFPlayerMini player;
-void printDetail(uint8_t type, int value);
-
-void InitializeWiFi();
-void InitializeWebServer();
-void InitializeEngine();
-void InitializeChimney();
-void InitializePlayer();
 
 void setup() {
   Serial.begin(115200);
@@ -30,13 +35,14 @@ void setup() {
   InitializeEngine();
   InitializeChimney();
   InitializePlayer();
-  InitializeWebServer();
   InitializeWiFi();
+  InitializeWebServer();
   Serial.println(F("Train initialization completed"));
 }
 
 void loop() {
   server.handleClient();
+
   if (millis() - ChimneyTimer >= ChimneyLowHighPeriod) {
     ChimneyTimer = millis();
 
@@ -48,6 +54,52 @@ void loop() {
 
     IsChimneyLow = !IsChimneyLow;
   }
+
+  if (millis() - PlayerTimer >= PlayerCommandDelay) {
+    if (CurrentVolume != NewVolume) {
+      CurrentVolume = NewVolume;
+      player.volume(CurrentVolume);
+    } else if (CurrentTrack != NewTrack) {
+      CurrentTrack = NewTrack;
+      player.play(CurrentTrack);
+    } else if (CurrentIsPlaying) {
+      if (NewIsPaused) {
+        CurrentIsPlaying = false;
+        CurrentIsPaused = true;
+        CurrentIsStopped = false;
+        //pause
+      } else if (NewIsStopped) {
+        CurrentIsPlaying = false;
+        CurrentIsPaused = false;
+        CurrentIsStopped = true;
+        //stop
+      }
+    } else if (CurrentIsPaused) {
+      if (NewIsPlaying) {
+        CurrentIsPlaying = true;
+        CurrentIsPaused = false;
+        CurrentIsStopped = false;
+        //resume
+      } else if (NewIsStopped) {
+        CurrentIsPlaying = false;
+        CurrentIsPaused = false;
+        CurrentIsStopped = true;
+        //stop
+      }
+    } else if (CurrentIsStopped) {
+      if (NewIsPlaying) {
+        CurrentIsPlaying = true;
+        CurrentIsPaused = false;
+        CurrentIsStopped = false;
+        //play
+      } else if (NewIsPaused) {
+        CurrentIsPlaying = false;
+        CurrentIsPaused = false;
+        CurrentIsStopped = true;
+        //do nothing
+      }
+    }
+  }
 }
 
 void InitializePlayer() {
@@ -58,9 +110,6 @@ void InitializePlayer() {
   }
   player.setTimeOut(500);
   delay(3000);
-  player.volume(0);
-  delay(1000);
-  player.play(4);
   Serial.println(F("Player initialized"));
 }
 
@@ -89,6 +138,11 @@ void InitializeWebServer() {
   server.on("/", handle_OnConnect);
   server.on("/changeThrottle", handle_changeThrottle);
   server.on("/changeVolume", handle_changeVolume);
+  server.on("/nextTrack", handle_nextTrack);
+  server.on("/previousTrack", handle_previousTrack);
+  server.on("/play", handle_play);
+  server.on("/pause", handle_pause);
+  server.on("/stop", handle_stop);
   server.begin();
   Serial.println(F("HTTP server initialized"));
 }
@@ -195,13 +249,65 @@ void handle_changeVolume() {
       break;
   }
 
-  player.pause();
-  delay(1000);
-  player.volume(playerValue);
-  delay(1000);
-  player.start();
+  NewVolume = playerValue;
 
   String payload = "{ \"value\": " + String(value) + " }";
   Serial.println(payload);
   server.send(200, "text/json", payload);
+}
+
+void handle_nextTrack() {
+  switch (CurrentTrack) {
+    case 3:
+      NewTrack = 4;
+      break;
+    case 4:
+      NewTrack = 5;
+      break;
+    case 5:
+      NewTrack = 3;
+      break;
+  }
+
+  server.send(200, "text/json");
+}
+
+void handle_previousTrack() {
+  switch (CurrentTrack) {
+    case 3:
+      NewTrack = 5;
+      break;
+    case 4:
+      NewTrack = 3;
+      break;
+    case 5:
+      NewTrack = 4;
+      break;
+  }
+
+  server.send(200, "text/json");
+}
+
+void handle_play() {
+  NewIsPlaying = true;
+  NewIsPaused = false;
+  NewIsStopped = false;
+
+  server.send(200, "text/json");
+}
+
+void handle_pause() {
+  NewIsPlaying = false;
+  NewIsPaused = true;
+  NewIsStopped = false;
+
+  server.send(200, "text/json");
+}
+
+void handle_stop() {
+  NewIsPlaying = false;
+  NewIsPaused = false;
+  NewIsStopped = true;
+
+  server.send(200, "text/json");
 }
