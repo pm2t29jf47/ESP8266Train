@@ -57,7 +57,7 @@ void InitializePlayer() {
     while (true) { delay(0); }
   }
   player.setTimeOut(500);
-  delay(1000);
+  delay(3000);
   player.volume(0);
   delay(1000);
   player.play(4);
