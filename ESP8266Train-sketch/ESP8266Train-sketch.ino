@@ -1,8 +1,9 @@
+#include <DFPlayerMini_Fast.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
 #include "Arduino.h"
+#include "PlayerStateComposition.h"
 #define AP_SSID "furyTrain"
 #define ChimneyPin 5
 #define EnginePin 4
@@ -11,16 +12,16 @@
 
 unsigned long _chimneyTimer;
 unsigned long _playerTimer;
-unsigned int _playerCommandDelay = 2000;
+int _playerLoopRepeater = 0;
+int _playerLoopRepeatCount = 5;
+unsigned int _playerCommandDelay = 500;
 unsigned int _chimneyLowHighPeriod = 2000;
 bool _isChimneyLow = true;
-unsigned int _currentVolume = 1;
-unsigned int _newVolume = 0;
-unsigned int _currentTrack = 0;
-unsigned int _newTrack = 3;
+bool _isPlayerWakedUp;
 SoftwareSerial _playerSerial(PlayerRxPin, PlayerTxPin);
 ESP8266WebServer _server(80);
-DFRobotDFPlayerMini _player;
+DFPlayerMini_Fast _player;
+PlayerStateComposition _playerStateComposition;
 
 void setup() {
   Serial.begin(115200);
@@ -31,6 +32,11 @@ void setup() {
   InitializePlayer();
   InitializeWiFi();
   InitializeWebServer();
+  _player.volume(15);
+  delay(500);
+  _player.play(2);
+  delay(5000);
+  _player.volume(0);
   Serial.println(F("Train initialization completed"));
 }
 
@@ -50,25 +56,124 @@ void loop() {
   }
 
   if (millis() - _playerTimer >= _playerCommandDelay) {
-    if (_currentVolume != _newVolume) {
-      _currentVolume = _newVolume;
-      _player.volume(_currentVolume);
-    } else if (_currentTrack != _newTrack) {
-      _currentTrack = _newTrack;
-      _player.play(_currentTrack);
-    }    
+    _playerTimer = millis();
+    if (_playerStateComposition.isVolumeChanged) {
+      if (_isPlayerWakedUp) {
+        _player.volume(_playerStateComposition.applyVolume());
+        _isPlayerWakedUp = false;
+      } else {
+        _player.wakeUp();
+        _isPlayerWakedUp = true;
+      }
+    } else if (_playerStateComposition.isQueueTrackChanged) {
+      if (_isPlayerWakedUp) {
+        _player.play(_playerStateComposition.applyCurrentTrackInQueue());
+        _isPlayerWakedUp = false;
+      } else {
+        _player.wakeUp();
+        _isPlayerWakedUp = true;
+      }
+    } else if (_playerStateComposition.isStateChanged) {
+
+      switch (_playerStateComposition.currentState) {
+        case play:
+          switch (_playerStateComposition.newState) {
+            case play:
+              _playerStateComposition.applyState();
+              break;
+            case pause:
+              if (_isPlayerWakedUp) {
+                _playerStateComposition.applyState();
+                _player.pause();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
+              break;
+            default:
+              if (_isPlayerWakedUp) {
+                _playerStateComposition.applyState();
+                _player.stop();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
+              break;
+          }
+          break;
+        case pause:
+          switch (_playerStateComposition.newState) {
+            case play:
+              if (_isPlayerWakedUp) {
+                _playerStateComposition.applyState();
+                _player.resume();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
+              break;
+            case pause:
+              _playerStateComposition.applyState();
+              break;
+            default:
+              if (_isPlayerWakedUp) {
+                _playerStateComposition.applyState();
+                _player.stop();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
+              break;
+          }
+          break;
+        default:
+          switch (_playerStateComposition.newState) {
+            case play:
+              if (_isPlayerWakedUp) {
+                _playerStateComposition.applyState();
+                _player.play(_playerStateComposition.currentTrackInQueue);
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
+              break;
+            default:
+              _playerStateComposition.applyState();
+              break;
+          }
+          break;
+      }
+    } else if (_playerStateComposition.currentState == play
+               && !_playerStateComposition.isStateChanged
+               && !_playerStateComposition.isQueueTrackChanged
+               && !_player.isPlaying()) {
+      if (!_player.isPlaying()) {
+        _playerLoopRepeater++;
+      } else {
+        _playerLoopRepeater = 0;
+      }
+      if (_playerLoopRepeater >= _playerLoopRepeatCount) {
+        _playerLoopRepeater = 0;
+        _playerStateComposition.playNextTrackInQueue();
+      }
+    }
   }
 }
 
 void InitializePlayer() {
   _playerSerial.begin(9600);
-  if (!_player.begin(_playerSerial, false, true)) {
+  if (!_player.begin(_playerSerial, false, 500)) {
     Serial.println(F("Player NOT initialized"));
-    while (true) { delay(0); }
-  }
-  _player.setTimeOut(500);
-  delay(3000);
-  Serial.println(F("Player initialized"));
+    while (true) {
+      delay(0);
+    }
+  }  
+  Serial.println(F("Player initialized"));  
 }
 
 void InitializeChimney() {
@@ -168,92 +273,34 @@ void handle_changeThrottle() {
 }
 
 void handle_changeVolume() {
-  int value = _server.arg(0).toInt();
-  int playerValue = 0;
-
-  switch (value) {
-    case 10:
-      playerValue = 3;
-      break;
-    case 20:
-      playerValue = 6;
-      break;
-    case 30:
-      playerValue = 9;
-      break;
-    case 40:
-      playerValue = 12;
-      break;
-    case 50:
-      playerValue = 15;
-      break;
-    case 60:
-      playerValue = 18;
-      break;
-    case 70:
-      playerValue = 21;
-      break;
-    case 80:
-      playerValue = 24;
-      break;
-    case 90:
-      playerValue = 27;
-      break;
-    case 100:
-      playerValue = 30;
-      break;
-    default:
-      playerValue = 0;
-      break;
-  }
-
-  _newVolume = playerValue;
-
-  String payload = "{ \"value\": " + String(value) + " }";
+  int percent = _server.arg(0).toInt();
+  int value = _playerStateComposition.changeVolume(percent);
+  String payload = "{ \"value\": " + String(percent) + " }";
   Serial.println(payload);
   _server.send(200, "text/json", payload);
 }
 
 void handle_nextTrack() {
-  switch (_currentTrack) {
-    case 3:
-      _newTrack = 4;
-      break;
-    case 4:
-      _newTrack = 5;
-      break;
-    case 5:
-      _newTrack = 3;
-      break;
-  }
-
+  _playerStateComposition.playNextTrackInQueue();
   _server.send(200, "text/json");
 }
 
 void handle_previousTrack() {
-  switch (_currentTrack) {
-    case 3:
-      _newTrack = 5;
-      break;
-    case 4:
-      _newTrack = 3;
-      break;
-    case 5:
-      _newTrack = 4;
-      break;
-  }
-
+  _playerStateComposition.playPreviousTrackInQueue();
   _server.send(200, "text/json");
 }
 
 void handle_play() {
+  _playerStateComposition.changeState(play);
   _server.send(200, "text/json");
 }
 
 void handle_pause() {
+  _playerStateComposition.changeState(pause);
   _server.send(200, "text/json");
 }
 
 void handle_stop() {
+  _playerStateComposition.changeState(stop);
   _server.send(200, "text/json");
 }
