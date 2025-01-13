@@ -9,6 +9,7 @@
 #define EnginePin 4
 #define PlayerRxPin 12
 #define PlayerTxPin 14
+#define VoltageRxPin 13
 
 unsigned long _chimneyTimer;
 unsigned long _playerTimer;
@@ -206,7 +207,8 @@ void InitializeWebServer() {
   _server.on("/play", handle_play);
   _server.on("/pause", handle_pause);
   _server.on("/stop", handle_stop);
-  _server.begin();
+  _server.on("/checkBatteryStatus", hsndle_checkBatteryStatus);
+    _server.begin();
   Serial.println(F("HTTP _server initialized"));
 }
 
@@ -303,4 +305,11 @@ void handle_pause() {
 void handle_stop() {
   _playerStateComposition.changeState(stop);
   _server.send(200, "text/json");
+}
+
+void hsndle_checkBatteryStatus() {
+  bool isBatteryGood = digitalRead(VoltageRxPin) == HIGH;
+  String payload = "{ \"isBatteryGood\": " + String(isBatteryGood) + " }";
+  Serial.println(payload);
+  _server.send(200, "text/json", payload);
 }
