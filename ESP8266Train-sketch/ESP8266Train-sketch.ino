@@ -5,6 +5,7 @@
 #include "Arduino.h"
 #include "PlayerStateComposition.h"
 #include "HttpServerData.h"
+#include "ThrottleWrapper.h"
 #define AP_SSID "furyTrain"
 #define ChimneyPin 5
 #define EnginePin 4
@@ -12,19 +13,18 @@
 #define PlayerTxPin 14
 #define VoltageRxPin 13
 
-unsigned long _chimneyTimer;
 unsigned long _playerTimer;
 int _playerLoopRepeater = 0;
 int _playerLoopRepeatCount = 5;
 unsigned int _playerCommandDelay = 500;
 unsigned int _chimneyLowHighPeriod = 2000;
-bool _isChimneyLow = true;
 bool _isPlayerWakedUp;
 SoftwareSerial _playerSerial(PlayerRxPin, PlayerTxPin);
 ESP8266WebServer _server(80);
 HttpServerData _httpServerData;
 DFPlayerMini_Fast _player;
 PlayerStateComposition _playerStateComposition;
+ThrottleWrapper _throttleWrapper;
 
 void setup() {
   Serial.begin(115200);
@@ -45,18 +45,7 @@ void setup() {
 
 void loop() {
   _server.handleClient();
-
-  if (millis() - _chimneyTimer >= _chimneyLowHighPeriod) {
-    _chimneyTimer = millis();
-
-    if (_isChimneyLow) {
-      analogWrite(ChimneyPin, 255);
-    } else {
-      analogWrite(ChimneyPin, 100);
-    }
-
-    _isChimneyLow = !_isChimneyLow;
-  }
+  _throttleWrapper.handleChimney();
 
   if (millis() - _playerTimer >= _playerCommandDelay) {
     _playerTimer = millis();
@@ -175,29 +164,29 @@ void InitializePlayer() {
     while (true) {
       delay(0);
     }
-  }  
-  Serial.println(F("Player initialized"));  
+  }
+  Serial.println(F("Player initialized"));
 }
 
 void InitializeChimney() {
-  pinMode(ChimneyPin, OUTPUT);
+  _throttleWrapper.initializeChimney(ChimneyPin);
   Serial.println(F("Chimney initialized"));
 }
 
 void InitializeEngine() {
-  pinMode(EnginePin, OUTPUT);
-  analogWrite(EnginePin, 0);
+  _throttleWrapper.initializeEngine(EnginePin);
   Serial.println(F("Engine initialized"));
 }
 
 void InitializeWiFi() {
-  IPAddress local_ip(192, 168, 1, 1);
-  IPAddress gateway(192, 168, 1, 1);
-  IPAddress subnet(255, 255, 255, 0);
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID);
-  WiFi.softAPConfig(local_ip, gateway, subnet);
+  WiFi.begin("furycat", "j9S9wRkt$*Pj");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+
   Serial.println(F("WiFi initialized"));
+  Serial.println(WiFi.localIP());
 }
 
 void InitializeWebServer() {
@@ -210,7 +199,7 @@ void InitializeWebServer() {
   _server.on("/pause", handle_pause);
   _server.on("/stop", handle_stop);
   _server.on("/checkBatteryStatus", hsndle_checkBatteryStatus);
-    _server.begin();
+  _server.begin();
   Serial.println(F("HTTP server initialized"));
 }
 
@@ -220,57 +209,8 @@ void handle_OnConnect() {
 
 void handle_changeThrottle() {
   int value = _server.arg(0).toInt();
-  int pwmValue = 0;
-
-  switch (value) {
-    case 10:
-      pwmValue = 100;
-      _chimneyLowHighPeriod = 1000;
-      break;
-    case 20:
-      pwmValue = 120;
-      _chimneyLowHighPeriod = 900;
-      break;
-    case 30:
-      pwmValue = 135;
-      _chimneyLowHighPeriod = 800;
-      break;
-    case 40:
-      pwmValue = 155;
-      _chimneyLowHighPeriod = 700;
-      break;
-    case 50:
-      pwmValue = 170;
-      _chimneyLowHighPeriod = 600;
-      break;
-    case 60:
-      pwmValue = 185;
-      _chimneyLowHighPeriod = 500;
-      break;
-    case 70:
-      pwmValue = 200;
-      _chimneyLowHighPeriod = 400;
-      break;
-    case 80:
-      pwmValue = 215;
-      _chimneyLowHighPeriod = 300;
-      break;
-    case 90:
-      pwmValue = 230;
-      _chimneyLowHighPeriod = 200;
-      break;
-    case 100:
-      pwmValue = 255;
-      _chimneyLowHighPeriod = 100;
-      break;
-    default:
-      pwmValue = 0;
-      _chimneyLowHighPeriod = 2000;
-      break;
-  }
-
-  analogWrite(EnginePin, pwmValue);
-
+  _throttleWrapper.applyThrottle(value);
+  _throttleWrapper.handleEngine();
   String payload = "{ \"value\": " + String(value) + " }";
   Serial.println(payload);
   _server.send(200, "text/json", payload);
