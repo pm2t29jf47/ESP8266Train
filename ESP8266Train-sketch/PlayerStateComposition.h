@@ -1,21 +1,29 @@
+#include <DFPlayerMini_Fast.h>
 #include "PlayerStateEnum.h"
 
 class PlayerStateComposition {
-public:
-  PlayerStateEnum currentState = stop;
-  PlayerStateEnum newState;
-  int currentTrackInQueue = 3;
-  int volume = 0;
-  bool isStateChanged;
-  bool isVolumeChanged;
-  bool isQueueTrackChanged;
-
-  int applyCurrentTrackInQueue();
+private:
+  unsigned long _playerTimer;
+  bool _isPlayerWakedUp;
+  DFPlayerMini_Fast _player;
+  PlayerStateEnum _currentState = stop;
+  PlayerStateEnum _newState;
+  int _playerLoopRepeater = 0;
+  int _currentTrackInQueue = 3;
+  int _volume = 0;
+  bool _isStateChanged;
+  bool _isVolumeChanged;
+  bool _isQueueTrackChanged;
   int applyVolume();
+  int applyCurrentTrackInQueue();
+  PlayerStateEnum applyState();
+public:
+  int playerCommandDelay = 500;
+  int playerLoopRepeatCount = 5;
   int playNextTrackInQueue();
   int playPreviousTrackInQueue();
   int changeVolume(int percent);
   void changeState(PlayerStateEnum state);
-  PlayerStateEnum applyState();
+  void handlePlayer();
+  void initializePlayer(DFPlayerMini_Fast player, int playerCommandDelay, int playerLoopRepeatCount, int currentTrackInQueue);
 };
-
