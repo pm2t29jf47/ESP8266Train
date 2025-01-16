@@ -74,6 +74,6 @@ void ThrottleWrapper::initializeEngine(int enginePin) {
   pinMode(_enginePin, OUTPUT);
 }
 
-void ThrottleWrapper::handleEngine(){
+void ThrottleWrapper::handleEngine() {
   analogWrite(_enginePin, _pwmValue);
 }

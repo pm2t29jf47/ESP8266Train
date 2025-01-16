@@ -13,16 +13,10 @@
 #define PlayerTxPin 14
 #define VoltageRxPin 13
 
-unsigned long _playerTimer;
-int _playerLoopRepeater = 0;
-int _playerLoopRepeatCount = 5;
-unsigned int _playerCommandDelay = 500;
-unsigned int _chimneyLowHighPeriod = 2000;
-bool _isPlayerWakedUp;
 SoftwareSerial _playerSerial(PlayerRxPin, PlayerTxPin);
+DFPlayerMini_Fast _player;
 ESP8266WebServer _server(80);
 HttpServerData _httpServerData;
-DFPlayerMini_Fast _player;
 PlayerStateComposition _playerStateComposition;
 ThrottleWrapper _throttleWrapper;
 
@@ -46,115 +40,7 @@ void setup() {
 void loop() {
   _server.handleClient();
   _throttleWrapper.handleChimney();
-
-  if (millis() - _playerTimer >= _playerCommandDelay) {
-    _playerTimer = millis();
-    if (_playerStateComposition.isVolumeChanged) {
-      if (_isPlayerWakedUp) {
-        _player.volume(_playerStateComposition.applyVolume());
-        _isPlayerWakedUp = false;
-      } else {
-        _player.wakeUp();
-        _isPlayerWakedUp = true;
-      }
-    } else if (_playerStateComposition.isQueueTrackChanged) {
-      if (_isPlayerWakedUp) {
-        _player.play(_playerStateComposition.applyCurrentTrackInQueue());
-        _isPlayerWakedUp = false;
-      } else {
-        _player.wakeUp();
-        _isPlayerWakedUp = true;
-      }
-    } else if (_playerStateComposition.isStateChanged) {
-
-      switch (_playerStateComposition.currentState) {
-        case play:
-          switch (_playerStateComposition.newState) {
-            case play:
-              _playerStateComposition.applyState();
-              break;
-            case pause:
-              if (_isPlayerWakedUp) {
-                _playerStateComposition.applyState();
-                _player.pause();
-                _isPlayerWakedUp = false;
-              } else {
-                _player.wakeUp();
-                _isPlayerWakedUp = true;
-              }
-              break;
-            default:
-              if (_isPlayerWakedUp) {
-                _playerStateComposition.applyState();
-                _player.stop();
-                _isPlayerWakedUp = false;
-              } else {
-                _player.wakeUp();
-                _isPlayerWakedUp = true;
-              }
-              break;
-          }
-          break;
-        case pause:
-          switch (_playerStateComposition.newState) {
-            case play:
-              if (_isPlayerWakedUp) {
-                _playerStateComposition.applyState();
-                _player.resume();
-                _isPlayerWakedUp = false;
-              } else {
-                _player.wakeUp();
-                _isPlayerWakedUp = true;
-              }
-              break;
-            case pause:
-              _playerStateComposition.applyState();
-              break;
-            default:
-              if (_isPlayerWakedUp) {
-                _playerStateComposition.applyState();
-                _player.stop();
-                _isPlayerWakedUp = false;
-              } else {
-                _player.wakeUp();
-                _isPlayerWakedUp = true;
-              }
-              break;
-          }
-          break;
-        default:
-          switch (_playerStateComposition.newState) {
-            case play:
-              if (_isPlayerWakedUp) {
-                _playerStateComposition.applyState();
-                _player.play(_playerStateComposition.currentTrackInQueue);
-                _isPlayerWakedUp = false;
-              } else {
-                _player.wakeUp();
-                _isPlayerWakedUp = true;
-              }
-              break;
-            default:
-              _playerStateComposition.applyState();
-              break;
-          }
-          break;
-      }
-    } else if (_playerStateComposition.currentState == play
-               && !_playerStateComposition.isStateChanged
-               && !_playerStateComposition.isQueueTrackChanged
-               && !_player.isPlaying()) {
-      if (!_player.isPlaying()) {
-        _playerLoopRepeater++;
-      } else {
-        _playerLoopRepeater = 0;
-      }
-      if (_playerLoopRepeater >= _playerLoopRepeatCount) {
-        _playerLoopRepeater = 0;
-        _playerStateComposition.playNextTrackInQueue();
-      }
-    }
-  }
+  _playerStateComposition.handlePlayer();
 }
 
 void InitializePlayer() {
@@ -165,6 +51,7 @@ void InitializePlayer() {
       delay(0);
     }
   }
+  _playerStateComposition.initializePlayer(_player, 500, 5, 3);
   Serial.println(F("Player initialized"));
 }
 

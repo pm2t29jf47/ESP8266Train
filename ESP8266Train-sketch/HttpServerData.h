@@ -1,5 +1,5 @@
 #include "Arduino.h"
-class HttpServerData{
-  public:
+class HttpServerData {
+public:
   const __FlashStringHelper* GetStaticContent();
 };
