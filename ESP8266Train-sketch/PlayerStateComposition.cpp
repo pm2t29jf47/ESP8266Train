@@ -110,6 +110,18 @@ PlayerStateEnum PlayerStateComposition::applyState() {
   return _currentState;
 }
 
+void PlayerStateComposition::requestHorn(int hornTrackNo) {
+  _isHornRequested = true;
+  _hornTrackNo = hornTrackNo;
+  changeState(stop);
+}
+
+void PlayerStateComposition::requestDemo(int demoTrackNo) {
+  _isDemoRequested = true;
+  _demoTrackNo = demoTrackNo;
+  changeState(stop);
+}
+
 void PlayerStateComposition::handlePlayer() {
   if (millis() - _playerTimer >= playerCommandDelay) {
     _playerTimer = millis();
@@ -135,7 +147,14 @@ void PlayerStateComposition::handlePlayer() {
         case play:
           switch (_newState) {
             case play:
-              applyState();
+              if (_isPlayerWakedUp) {
+                applyState();
+                _player.play(_currentTrackInQueue);
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
               break;
             case pause:
               if (_isPlayerWakedUp) {
@@ -172,7 +191,14 @@ void PlayerStateComposition::handlePlayer() {
               }
               break;
             case pause:
-              applyState();
+              if (_isPlayerWakedUp) {
+                applyState();
+                _player.pause();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
               break;
             default:
               if (_isPlayerWakedUp) {
@@ -199,10 +225,35 @@ void PlayerStateComposition::handlePlayer() {
               }
               break;
             default:
-              applyState();
+              if (_isPlayerWakedUp) {
+                applyState();
+                _player.stop();
+                _isPlayerWakedUp = false;
+              } else {
+                _player.wakeUp();
+                _isPlayerWakedUp = true;
+              }
               break;
           }
           break;
+      }
+    } else if (_isHornRequested) {
+      if (_isPlayerWakedUp) {
+        _isHornRequested = false;
+        _isPlayerWakedUp = false;
+        _player.play(_hornTrackNo);
+      } else {
+        _player.wakeUp();
+        _isPlayerWakedUp = true;
+      }
+    } else if (_isDemoRequested) {
+      if (_isPlayerWakedUp) {
+        _isDemoRequested = false;
+        _isPlayerWakedUp = false;
+        _player.play(_demoTrackNo);
+      } else {
+        _player.wakeUp();
+        _isPlayerWakedUp = true;
       }
     } else if (_currentState == play
                && !_isStateChanged

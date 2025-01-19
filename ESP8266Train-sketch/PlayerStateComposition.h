@@ -11,9 +11,13 @@ private:
   int _playerLoopRepeater = 0;
   int _currentTrackInQueue = 3;
   int _volume = 0;
+  int _hornTrackNo;
+  int _demoTrackNo;
   bool _isStateChanged;
   bool _isVolumeChanged;
   bool _isQueueTrackChanged;
+  bool _isHornRequested = false;
+  bool _isDemoRequested = false;
   int applyVolume();
   int applyCurrentTrackInQueue();
   PlayerStateEnum applyState();
@@ -26,4 +30,6 @@ public:
   void changeState(PlayerStateEnum state);
   void handlePlayer();
   void initializePlayer(DFPlayerMini_Fast player, int playerCommandDelay, int playerLoopRepeatCount, int currentTrackInQueue);
+  void requestHorn(int hornTrackNo);
+  void requestDemo(int demoTracnNo);
 };
