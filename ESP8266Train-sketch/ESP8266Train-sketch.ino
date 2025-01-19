@@ -12,6 +12,8 @@
 #define PlayerRxPin 12
 #define PlayerTxPin 14
 #define VoltageRxPin 13
+#define HornTrack 2
+#define DemoTrack 1
 
 SoftwareSerial _playerSerial(PlayerRxPin, PlayerTxPin);
 DFPlayerMini_Fast _player;
@@ -51,7 +53,7 @@ void InitializePlayer() {
       delay(0);
     }
   }
-  _playerStateComposition.initializePlayer(_player, 500, 5, 3);
+  _playerStateComposition.initializePlayer(_player, 500, 10, 3);
   Serial.println(F("Player initialized"));
 }
 
@@ -66,14 +68,16 @@ void InitializeEngine() {
 }
 
 void InitializeWiFi() {
-  WiFi.begin("furycat", "j9S9wRkt$*Pj");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
+  IPAddress local_ip(192, 168, 1, 1);
+  IPAddress gateway(192, 168, 1, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID);
+  WiFi.softAPConfig(local_ip, gateway, subnet);
+}
 
-  Serial.println(F("WiFi initialized"));
-  Serial.println(WiFi.localIP());
+Serial.println(F("WiFi initialized"));
+Serial.println(WiFi.localIP());
 }
 
 void InitializeWebServer() {
@@ -85,7 +89,9 @@ void InitializeWebServer() {
   _server.on("/play", handle_play);
   _server.on("/pause", handle_pause);
   _server.on("/stop", handle_stop);
-  _server.on("/checkBatteryStatus", hsndle_checkBatteryStatus);
+  _server.on("/horn", handle_horn);
+  _server.on("/demo", handle_demo);
+  _server.on("/checkBatteryStatus", handle_checkBatteryStatus);
   _server.begin();
   Serial.println(F("HTTP server initialized"));
 }
@@ -99,7 +105,6 @@ void handle_changeThrottle() {
   _throttleWrapper.applyThrottle(value);
   _throttleWrapper.handleEngine();
   String payload = "{ \"value\": " + String(value) + " }";
-  Serial.println(payload);
   _server.send(200, "text/json", payload);
 }
 
@@ -107,7 +112,6 @@ void handle_changeVolume() {
   int percent = _server.arg(0).toInt();
   int value = _playerStateComposition.changeVolume(percent);
   String payload = "{ \"value\": " + String(percent) + " }";
-  Serial.println(payload);
   _server.send(200, "text/json", payload);
 }
 
@@ -136,9 +140,26 @@ void handle_stop() {
   _server.send(200, "text/json");
 }
 
-void hsndle_checkBatteryStatus() {
-  bool isBatteryGood = digitalRead(VoltageRxPin) == HIGH;
+void handle_horn() {
+  _playerStateComposition.requestHorn(HornTrack);
+  _server.send(200);
+}
+
+void handle_demo() {
+  _playerStateComposition.requestHorn(DemoTrack);
+  _server.send(200);
+}
+
+void handle_checkBatteryStatus() {
+  int state = 0;
+  for (int i = 0; i < 10; i++) {
+    if (digitalRead(VoltageRxPin) == HIGH) {
+      state++;
+    } else {
+      state--;
+    }
+  }
+  bool isBatteryGood = state >= 5;
   String payload = "{ \"isBatteryGood\": " + String(isBatteryGood) + " }";
-  Serial.println(payload);
   _server.send(200, "text/json", payload);
 }

@@ -24,6 +24,16 @@
             border-bottom: 1px solid #d0d8dd;
         }
 
+        .battery-row {
+            padding: 2rem 0;
+            border-bottom: 1px solid #d0d8dd;
+            text-align: center;
+        }
+
+        .red-text {
+            color: red;
+        }
+
         .input-row:last-child {
             border-bottom: 0;
         }
@@ -43,7 +53,7 @@
             margin-left: auto;
         }
 
-        .player-inpit {
+        .player-input {
             display: flex;
             align-items: center;
             margin-left: auto;
@@ -132,6 +142,10 @@
         .dim {
             color: #8d9ca7;
         }
+
+        .display-none {
+            display: none;
+        }
     </style>
 </head>
 
@@ -184,7 +198,7 @@
             </div>
         </div>
         <div class="input-row">
-            <div id="playerInput" class="player-inpit">
+            <div id="playerInput" class="player-input">
                 <button class="previous" disabled>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <line x1="1" y1="0" x2="1" y2="16" stroke="#0064FE" stroke-width="2" />
@@ -216,7 +230,7 @@
             </div>
         </div>
         <div class="input-row">
-            <div id="extending-input" class="player-inpit">
+            <div id="extendingInput" class="player-input">
                 <button class="horn">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle r="4" cx="6" cy="10" fill="#0064FE" stroke="#0064FE" stroke-width="1" />
@@ -233,50 +247,55 @@
                 </button>
             </div>
         </div>
+        <div class="battery-row">
+            <div id="lowBattery" class="red-text display-none">low battery</div>
+            <div id="goodBattery" class="display-none">good battery</div>
+        </div>
     </div>
     <script>
         const baseThrottleUrl = "/changeThrottle";
         const baseVolumeUrl = "/changeVolume";
         const previousTrackUrl = "/previousTrack";
-        const playTrackUrl = "/play";
-        const pauseTrackUrl = "/pause";
-        const stopTrackUrl = "/stop";
+        const playUrl = "/play";
+        const pauseUrl = "/pause";
+        const stopUrl = "/stop";
         const nextTrackUrl = "/nextTrack";
+        const hornUrl = "/horn";
+        const demoUrl = "/demo";
+        const checkBatteryStatusUrl = "/checkBatteryStatus";
         const throttleInputButtons = document.getElementById("throttleInput").querySelectorAll("button");
         const volumeInputButtons = document.getElementById("volumeInput").querySelectorAll("button");
         const playerInputButtons = document.getElementById("playerInput").querySelectorAll("button");
-        throttleInputButtons.forEach((button) => {
-            button.addEventListener("click", async (event) => {
-                getPlusMinusInputValue(
-                    event,
-                    async (newNumberValue) => {
-                        const url = baseThrottleUrl + '?value=' + newNumberValue;
-                        const response = await fetch(url).catch(() => { return; });
-                        if (response === undefined || !response.ok) {
-                            alert("Ошибка HTTP: " + response?.status);
-                        }
-                        console.log("ThrottleInput value: " + newNumberValue);
-                        const jsonResponse = await response.json();
-                        return jsonResponse.value;
-                    });
-            });
-        });
-        volumeInputButtons.forEach((button) => {
-            button.addEventListener("click", async (event) => {
-                getPlusMinusInputValue(
-                    event,
-                    async (newNumberValue) => {
-                        const url = baseVolumeUrl + '?value=' + newNumberValue;
-                        const response = await fetch(url).catch(() => { return; });
-                        if (response === undefined || !response.ok) {
-                            alert("Ошибка HTTP: " + response?.status);
-                        }
-                        console.log("VolumeInput value: " + newNumberValue);
-                        const jsonResponse = await response.json();
-                        return jsonResponse.value;
-                    });
-            });
-        });
+        const previousButton = document.getElementById("playerInput").querySelector(".previous");
+        const playButton = document.getElementById("playerInput").querySelector(".play");
+        const pauseButton = document.getElementById("playerInput").querySelector(".pause");
+        const stopButton = document.getElementById("playerInput").querySelector(".stop");
+        const nextButton = document.getElementById("playerInput").querySelector(".next");
+
+
+        const extendingInputButtons = document.getElementById("extendingInput").querySelectorAll("button");
+        const lowBatteryElement = document.getElementById("lowBattery");
+        const goodBatteryElement = document.getElementById("goodBattery");
+        setInterval(checkBatteryStatus(), 20000);
+        async function checkBatteryStatus() {
+            const checkBatteryStatusResponse = await fetch(checkBatteryStatusUrl)
+                .catch(() => {
+                    return;
+                });
+            if (checkBatteryStatusResponse === undefined || !checkBatteryStatusResponse.ok) {
+                goodBatteryElement.classList.add("display-none");
+                lowBatteryElement.classList.add("display-none");
+            }
+            const jsonResponse = await checkBatteryStatusResponse.json();
+            const isBatteryGood = jsonResponse.isBatteryGood;
+            if (isBatteryGood) {
+                lowBatteryElement.classList.add("display-none");
+                goodBatteryElement.classList.remove("display-none");
+            } else {
+                lowBatteryElement.classList.remove("display-none");
+                goodBatteryElement.classList.add("display-none");
+            }
+        }
         async function getPlusMinusInputValue(event, serverAction) {
             const pressedButton = event.currentTarget;
             const minusButton = pressedButton.parentNode.querySelector(".minus");
@@ -313,14 +332,45 @@
                 pressedButton.blur();
             }
         }
+        throttleInputButtons.forEach((button) => {
+            button.addEventListener("click", async (event) => {
+                getPlusMinusInputValue(
+                    event,
+                    async (newNumberValue) => {
+                        const url = baseThrottleUrl + '?value=' + newNumberValue;
+                        const response = await fetch(url).catch(() => {
+                            return;
+                        });
+                        if (response === undefined || !response.ok) {
+                            alert("Ошибка HTTP: " + response?.status);
+                        }
+                        console.log("ThrottleInput value: " + newNumberValue);
+                        const jsonResponse = await response.json();
+                        return jsonResponse.value;
+                    });
+            });
+        });
+        volumeInputButtons.forEach((button) => {
+            button.addEventListener("click", async (event) => {
+                getPlusMinusInputValue(
+                    event,
+                    async (newNumberValue) => {
+                        const url = baseVolumeUrl + '?value=' + newNumberValue;
+                        const response = await fetch(url).catch(() => {
+                            return;
+                        });
+                        if (response === undefined || !response.ok) {
+                            alert("Ошибка HTTP: " + response?.status);
+                        }
+                        console.log("VolumeInput value: " + newNumberValue);
+                        const jsonResponse = await response.json();
+                        return jsonResponse.value;
+                    });
+            });
+        });
         playerInputButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
                 const pressedButton = event.currentTarget;
-                const previousButton = pressedButton.parentNode.querySelector(".previous");
-                const playButton = pressedButton.parentNode.querySelector(".play");
-                const pauseButton = pressedButton.parentNode.querySelector(".pause");
-                const stopButton = pressedButton.parentNode.querySelector(".stop");
-                const nextButton = pressedButton.parentNode.querySelector(".next");
                 let currentState = {
                     previousButtonIsDisabled: previousButton.disabled,
                     playButtonIsDisabled: playButton.disabled,
@@ -335,14 +385,16 @@
                 nextButton.disabled = true;
                 switch (pressedButton) {
                     case previousButton:
-                        const previousResponse = await fetch(previousTrackUrl).catch(() => { return; });
+                        const previousResponse = await fetch(previousTrackUrl).catch(() => {
+                            return;
+                        });
                         if (previousResponse === undefined || !previousResponse.ok) {
                             alert("Ошибка HTTP: " + previousResponse?.status);
                             previousButton.disabled = currentState.previousButtonIsDisabled;
-                            playButton.disabled = currentState.playButtonIsDisabled;;
-                            pauseButton.disabled = currentState.pauseButtonIsDisabled;;
-                            stopButton.disabled = currentState.stopButtonIsDisabled;;
-                            nextButton.disabled = currentState.nextButtonIsDisabled;;
+                            playButton.disabled = currentState.playButtonIsDisabled;
+                            pauseButton.disabled = currentState.pauseButtonIsDisabled;
+                            stopButton.disabled = currentState.stopButtonIsDisabled;
+                            nextButton.disabled = currentState.nextButtonIsDisabled;
                         } else {
                             previousButton.disabled = false;
                             playButton.disabled = true;
@@ -352,14 +404,16 @@
                         }
                         break;
                     case playButton:
-                        const playResponse = await fetch(playTrackUrl).catch(() => { return; });
+                        const playResponse = await fetch(playUrl).catch(() => {
+                            return;
+                        });
                         if (playResponse === undefined || !playResponse.ok) {
                             alert("Ошибка HTTP: " + playResponse?.status);
                             previousButton.disabled = currentState.previousButtonIsDisabled;
-                            playButton.disabled = currentState.playButtonIsDisabled;;
-                            pauseButton.disabled = currentState.pauseButtonIsDisabled;;
-                            stopButton.disabled = currentState.stopButtonIsDisabled;;
-                            nextButton.disabled = currentState.nextButtonIsDisabled;;
+                            playButton.disabled = currentState.playButtonIsDisabled;
+                            pauseButton.disabled = currentState.pauseButtonIsDisabled;
+                            stopButton.disabled = currentState.stopButtonIsDisabled;
+                            nextButton.disabled = currentState.nextButtonIsDisabled;
                         } else {
                             previousButton.disabled = false;
                             playButton.disabled = true;
@@ -369,14 +423,16 @@
                         }
                         break;
                     case pauseButton:
-                        const pauseResponse = await fetch(pauseTrackUrl).catch(() => { return; });
+                        const pauseResponse = await fetch(pauseUrl).catch(() => {
+                            return;
+                        });
                         if (pauseResponse === undefined || !pauseResponse.ok) {
                             alert("Ошибка HTTP: " + response?.status);
                             previousButton.disabled = currentState.previousButtonIsDisabled;
-                            playButton.disabled = currentState.playButtonIsDisabled;;
-                            pauseButton.disabled = currentState.pauseButtonIsDisabled;;
-                            stopButton.disabled = currentState.stopButtonIsDisabled;;
-                            nextButton.disabled = currentState.nextButtonIsDisabled;;
+                            playButton.disabled = currentState.playButtonIsDisabled;
+                            pauseButton.disabled = currentState.pauseButtonIsDisabled;
+                            stopButton.disabled = currentState.stopButtonIsDisabled;
+                            nextButton.disabled = currentState.nextButtonIsDisabled;
                         } else {
                             previousButton.disabled = false;
                             playButton.disabled = false;
@@ -386,14 +442,16 @@
                         }
                         break;
                     case stopButton:
-                        const stopResponse = await fetch(stopTrackUrl).catch(() => { return; });
+                        const stopResponse = await fetch(stopUrl).catch(() => {
+                            return;
+                        });
                         if (stopResponse === undefined || !stopResponse.ok) {
                             alert("Ошибка HTTP: " + response?.status);
                             previousButton.disabled = currentState.previousButtonIsDisabled;
-                            playButton.disabled = currentState.playButtonIsDisabled;;
-                            pauseButton.disabled = currentState.pauseButtonIsDisabled;;
-                            stopButton.disabled = currentState.stopButtonIsDisabled;;
-                            nextButton.disabled = currentState.nextButtonIsDisabled;;
+                            playButton.disabled = currentState.playButtonIsDisabled;
+                            pauseButton.disabled = currentState.pauseButtonIsDisabled;
+                            stopButton.disabled = currentState.stopButtonIsDisabled;
+                            nextButton.disabled = currentState.nextButtonIsDisabled;
                         } else {
                             previousButton.disabled = false;
                             playButton.disabled = false;
@@ -403,14 +461,16 @@
                         }
                         break;
                     case nextButton:
-                        const nextResponse = await fetch(nextTrackUrl).catch(() => { return; });
+                        const nextResponse = await fetch(nextTrackUrl).catch(() => {
+                            return;
+                        });
                         if (nextResponse === undefined || !nextResponse.ok) {
                             alert("Ошибка HTTP: " + response?.status);
                             previousButton.disabled = currentState.previousButtonIsDisabled;
-                            playButton.disabled = currentState.playButtonIsDisabled;;
-                            pauseButton.disabled = currentState.pauseButtonIsDisabled;;
-                            stopButton.disabled = currentState.stopButtonIsDisabled;;
-                            nextButton.disabled = currentState.nextButtonIsDisabled;;
+                            playButton.disabled = currentState.playButtonIsDisabled;
+                            pauseButton.disabled = currentState.pauseButtonIsDisabled;
+                            stopButton.disabled = currentState.stopButtonIsDisabled;
+                            nextButton.disabled = currentState.nextButtonIsDisabled;
                         } else {
                             previousButton.disabled = false;
                             playButton.disabled = true;
@@ -421,6 +481,49 @@
                         break;
                 }
             });
+        });
+        extendingInputButtons.forEach((button) => {
+            button.addEventListener("click", async (event) => {
+                const pressedButton = event.currentTarget;
+                const hornButton = pressedButton.parentNode.querySelector(".horn");
+                const demoButton = pressedButton.parentNode.querySelector(".demo");
+                switch (pressedButton) {
+                    case hornButton:
+                        hornButton.disabled = true;
+                        setTimeout(() => { hornButton.disabled = false; }, 5000);
+                        const hornResponse = await fetch(hornUrl)
+                            .catch(() => { return; });
+                        if (hornResponse === undefined || !hornResponse.ok) {
+                            alert("Ошибка HTTP: " + hornResponse?.status);
+                        }
+                        else {
+                            previousButton.disabled = false;
+                            playButton.disabled = false;
+                            pauseButton.disabled = true;
+                            stopButton.disabled = true;
+                            nextButton.disabled = false;
+                        }
+                        break;
+                    case demoButton:
+                        demoButton.disabled = true;
+                        setTimeout(() => { demoButton.disabled = false; }, 10000);
+                        const demoResponse = await fetch(demoUrl)
+                            .catch(() => {
+                                return;
+                            });
+                        if (demoResponse === undefined || !demoResponse.ok) {
+                            alert("Ошибка HTTP: " + demoResponse?.status);
+                        }
+                        else {
+                            previousButton.disabled = false;
+                            playButton.disabled = false;
+                            pauseButton.disabled = true;
+                            stopButton.disabled = true;
+                            nextButton.disabled = false;
+                        }
+                        break;
+                }
+            })
         });
     </script>
 
